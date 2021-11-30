@@ -11,11 +11,11 @@ import androidx.work.WorkerParameters;
 /**
  * 一个Worker的输出，是下一个 Worker 的输入
  */
-public class ChainedWorker extends Worker {
+public class Chaining3Worker extends Worker {
     private static final String TAG = "ChainedWorker";
+    private static final String KEY = "KEY_CHAINING_3";
 
-    // Context is Application
-    public ChainedWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+    public Chaining3Worker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
 

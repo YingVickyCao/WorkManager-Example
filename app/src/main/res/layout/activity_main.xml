@@ -21,13 +21,6 @@
         android:textAllCaps="false" />
 
     <Button
-        android:id="@+id/uniqueWork"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Unique Work"
-        android:textAllCaps="false" />
-
-    <Button
         android:id="@+id/scheduleExpeditedWork"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -47,6 +40,20 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Cancel Work"
+        android:textAllCaps="false" />
+
+    <Button
+        android:id="@+id/uniqueWork"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Unique Work"
+        android:textAllCaps="false" />
+
+    <Button
+        android:id="@+id/chainingWork"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chaining Work"
         android:textAllCaps="false" />
 
     <Button

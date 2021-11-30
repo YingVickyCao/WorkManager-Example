@@ -7,10 +7,10 @@ import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-public class BarWorker extends Worker {
-    public static final String BAR_KEY = "BAR_KEY";
+public class Chaining2Worker extends Worker {
+    public static final String KEY = "KEY_CHAINING_2";
 
-    public BarWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+    public Chaining2Worker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
 
@@ -18,7 +18,7 @@ public class BarWorker extends Worker {
     @Override
     public Result doWork() {
         Data inputData = getInputData();
-        int num = inputData.getInt(BAR_KEY, 0);
+        int num = inputData.getInt(KEY, 0);
         int sum = inputData.getInt(MainActivity.SUM_KEY, 0);
         int result = sum + num;
         Data outputData = new Data.Builder()

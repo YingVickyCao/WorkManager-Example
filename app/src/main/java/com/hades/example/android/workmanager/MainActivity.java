@@ -1,31 +1,24 @@
 package com.hades.example.android.workmanager;
 
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.work.BackoffPolicy;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
-import androidx.work.ListenableWorker;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
-import androidx.work.WorkQuery;
 import androidx.work.WorkRequest;
-
-import android.os.Bundle;
-import android.util.Log;
-import android.widget.ProgressBar;
-import android.widget.Toast;
-
-import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -34,11 +27,13 @@ public class MainActivity extends AppCompatActivity {
     private final String UNIQUE_WORK_NAME_OF_SUM = "SUM_TASK";
     private final String UNIQUE_WORK_1 = "UNIQUE_WORK_1";
     private final String UNIQUE_WORK_2 = "UNIQUE_WORK_2";
+    private final String UNIQUE_WORK_3_CHAINED_WORK = "UNIQUE_WORK_3_CHAINED_WORK";
     private final String UNIQUE_UNIQUE_PERIODIC_WORK_1 = "UNIQUE_UNIQUE_PERIODIC_WORK_1";
+
     public static final String SUM_KEY = "SUM_KEY";
-    private final String WORK_SUM_TAG_1 = "SUM_DATA_1";
-    private final String WORK_SUM_TAG_2 = "SUM_DATA_2";
-    private final String WORK_SUM_TAG_3 = "SUM_DATA_3";
+    private final String UNIQUE_WORK_3_CHAINED_WORK_TAG_1 = "UNIQUE_WORK_3_CHAINED_WORK_TAG_1";
+    private final String UNIQUE_WORK_3_CHAINED_WORK_TAG_2 = "UNIQUE_WORK_3_CHAINED_WORK_TAG_2";
+    private final String UNIQUE_WORK_3_CHAINED_WORK_TAG_3 = "UNIQUE_WORK_3_CHAINED_WORK_TAG_3";
     private UUID mWorkIdOfSumData1;
     public static final String WORK_REQUEST_TAG_PERIODIC_1 = "PERIODIC_WORK_REQUEST_1";
     public static final String WORK_REQUEST_TAG_2 = "WORK_REQUEST_2";
@@ -56,12 +51,12 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.scheduleExpeditedWork).setOnClickListener(view -> scheduleExpeditedWork());
         findViewById(R.id.schedulePeriodicWork).setOnClickListener(view -> schedulePeriodicWork());
         findViewById(R.id.cancelWork).setOnClickListener(view -> cancelWork());
+        findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork());
         findViewById(R.id.observeWork).setOnClickListener(view -> observeWork());
     }
 
     private void scheduleOneTimeWork() {
 //        singleWork();
-//        chainedWork();
     }
 
     private void uniqueWork() {
@@ -88,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 .build();
         WorkManager.getInstance(this).enqueueUniqueWork(UNIQUE_WORK_2, ExistingWorkPolicy.KEEP, oneTimeWorkRequest);
 
-        // TODO: 2021/11/30  observe work
+        // TODO: 2021/11/30  ListenableFuture
 //        ListenableFuture<WorkInfo> workInfo1 = WorkManager.getInstance(this).getWorkInfoById(oneTimeWorkRequest.getId());
 //        ListenableFuture<List<WorkInfo>> workInfo2 = WorkManager.getInstance(this).getWorkInfosForUniqueWork(UNIQUE_WORK_1);
 //        ListenableFuture<List<WorkInfo>> workInfo3 = WorkManager.getInstance(this).getWorkInfosByTag(UniqueWorker.TAG);
@@ -184,89 +179,46 @@ public class MainActivity extends AppCompatActivity {
                 .addTag(WORK_REQUEST_TAG_2)
                 .build();
         WorkManager.getInstance(this).enqueue(workRequest);
-
-        // observe work
-        // TODO: 2021/11/29
-        ListenableFuture<WorkInfo> workInfo = WorkManager.getInstance(this).getWorkInfoById(workRequest.getId());
     }
 
     private void chainedWork() {
         Data.Builder dataBuilder1 = new Data.Builder();
         dataBuilder1.putInt("num", 3);
         OneTimeWorkRequest workRequest1 = new OneTimeWorkRequest
-                .Builder(ChainedWorker.class)
+                .Builder(Chaining1Worker.class)
                 .setInputData(dataBuilder1.build())
-                .addTag(WORK_SUM_TAG_1) // 使用string tag 而非 id 标记Work
+                .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_1) // 使用string tag 而非 id 标记Work
                 .build();
 
         Data.Builder dataBuilder2 = new Data.Builder();
         dataBuilder1.putInt("num2", 5);
         OneTimeWorkRequest workRequest2 = new OneTimeWorkRequest
-                .Builder(ChainedWorker.class)
+                .Builder(Chaining2Worker.class)
                 .setInputData(dataBuilder2.build())
-                .addTag(WORK_SUM_TAG_2)
+                .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_2)
                 .build();
 
         Data.Builder dataBuilder3 = new Data.Builder();
         dataBuilder1.putInt("num3", 10);
         OneTimeWorkRequest workRequest3 = new OneTimeWorkRequest
-                .Builder(ChainedWorker.class)
+                .Builder(Chaining3Worker.class)
                 .setInputData(dataBuilder3.build())
-                .addTag(WORK_SUM_TAG_3)
+                .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_3)
                 .build();
 
         mWorkIdOfSumData1 = workRequest1.getId();
+        // 假如任务链上运行多次
 //        WorkManager.getInstance(this).beginWith(workRequest1).then(workRequest2).then(workRequest3).enqueue();
 
+        List<OneTimeWorkRequest> workRequestList = Arrays.asList(workRequest1, workRequest2);
         // 假如任务链只运行1次。
         WorkManager.getInstance(this)
-                .beginUniqueWork(UNIQUE_WORK_NAME_OF_SUM, ExistingWorkPolicy.REPLACE, workRequest1)
+                // 并行执行 workRequestList 中的任务
+//                .beginUniqueWork(UNIQUE_WORK_3_CHAINED_WORK, ExistingWorkPolicy.KEEP, workRequestList)
+                .beginUniqueWork(UNIQUE_WORK_3_CHAINED_WORK, ExistingWorkPolicy.KEEP, workRequest1)
                 .then(workRequest2)
                 .then(workRequest3)
                 .enqueue();
-
-        // Work Info
-//        WorkManager.getInstance(this).getWorkInfosByTag(WORK_SUM_TAG_1).addListener(new Run);
-    }
-
-    private void submitChainedWork2() {
-        Data.Builder dataBuilder1 = new Data.Builder();
-        dataBuilder1.putInt(FooWorker.FOO_KEY, 3);
-        OneTimeWorkRequest workRequest1 = new OneTimeWorkRequest
-                .Builder(FooWorker.class)
-                .setInputData(dataBuilder1.build())
-                .addTag(WORK_SUM_TAG_1) // 使用string tag 而非 id 标记Work
-                .build();
-
-        Data.Builder dataBuilder2 = new Data.Builder();
-        dataBuilder1.putInt(BarWorker.BAR_KEY, 5);
-        OneTimeWorkRequest workRequest2 = new OneTimeWorkRequest
-                .Builder(BarWorker.class)
-                .setInputData(dataBuilder2.build())
-                .addTag(WORK_SUM_TAG_2)
-                .build();
-
-        Data.Builder dataBuilder3 = new Data.Builder();
-        dataBuilder1.putInt(BazWorker.BAZ_KEY, 10);
-        OneTimeWorkRequest workRequest3 = new OneTimeWorkRequest
-                .Builder(BazWorker.class)
-                .setInputData(dataBuilder3.build())
-                .addTag(WORK_SUM_TAG_3)
-                .build();
-
-        mWorkIdOfSumData1 = workRequest1.getId();
-//        WorkManager.getInstance(this).beginWith(workRequest1).then(workRequest2).then(workRequest3).enqueue();
-        WorkManager.getInstance(this).beginWith(workRequest1).then(workRequest2).then(workRequest3).enqueue();
-
-        // 假如任务链只运行1次。
-//        WorkManager.getInstance(this)
-//                .beginUniqueWork(UNIQUE_WORK_NAME_OF_SUM, ExistingWorkPolicy.REPLACE, workRequest1)
-//                .then(workRequest2)
-//                .then(workRequest3)
-//                .enqueue();
-
-        // Work Info
-//        WorkManager.getInstance(this).getWorkInfosByTag(WORK_SUM_TAG_1).addListener(new Run);
     }
 
     private void cancelWork() {
@@ -278,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
             mWorkIdOfSumData1 = null;
         }
         // way 2 : tag
-        WorkManager.getInstance(this).cancelAllWorkByTag(WORK_SUM_TAG_1);
+        WorkManager.getInstance(this).cancelAllWorkByTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_1);
         // way 3 : name
         WorkManager.getInstance(this).cancelUniqueWork(UNIQUE_WORK_NAME_OF_SUM);
         // way 4 :
