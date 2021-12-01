@@ -6,19 +6,20 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.Observer;
+import androidx.work.ArrayCreatingInputMerger;
 import androidx.work.BackoffPolicy;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.OverwritingInputMerger;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -28,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private final String UNIQUE_WORK_1 = "UNIQUE_WORK_1";
     private final String UNIQUE_WORK_2 = "UNIQUE_WORK_2";
     private final String UNIQUE_WORK_3_CHAINED_WORK = "UNIQUE_WORK_3_CHAINED_WORK";
+    private final String UNIQUE_WORK_4_CHAINED_WORK = "UNIQUE_WORK_4_CHAINED_WORK";
     private final String UNIQUE_UNIQUE_PERIODIC_WORK_1 = "UNIQUE_UNIQUE_PERIODIC_WORK_1";
 
     public static final String SUM_KEY = "SUM_KEY";
@@ -37,6 +39,13 @@ public class MainActivity extends AppCompatActivity {
     private UUID mWorkIdOfSumData1;
     public static final String WORK_REQUEST_TAG_PERIODIC_1 = "PERIODIC_WORK_REQUEST_1";
     public static final String WORK_REQUEST_TAG_2 = "WORK_REQUEST_2";
+
+    public static final String KEY_PLANT_NAME_1 = "plant_name_1";
+    public static final String KEY_PLANT_NAME_2 = "plant_name_2";
+    public static final String KEY_PLANT_NAME_3 = "plant_name_3";
+    public static final String KEY_CHAINING_1 = "chaining_1";
+    public static final String KEY_CHAINING_2 = "chaining_2";
+    public static final String KEY_CHAINING_3 = "chaining_3";
 
 
     public static long ms;
@@ -51,7 +60,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.scheduleExpeditedWork).setOnClickListener(view -> scheduleExpeditedWork());
         findViewById(R.id.schedulePeriodicWork).setOnClickListener(view -> schedulePeriodicWork());
         findViewById(R.id.cancelWork).setOnClickListener(view -> cancelWork());
-        findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork());
+//        findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork());
+        findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork2());
         findViewById(R.id.observeWork).setOnClickListener(view -> observeWork());
     }
 
@@ -185,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
         Data.Builder dataBuilder1 = new Data.Builder();
         dataBuilder1.putInt("num", 3);
         OneTimeWorkRequest workRequest1 = new OneTimeWorkRequest
-                .Builder(Chaining1Worker.class)
+                .Builder(Chaining_1_1_Worker.class)
                 .setInputData(dataBuilder1.build())
                 .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_1) // 使用string tag 而非 id 标记Work
                 .build();
@@ -193,32 +203,157 @@ public class MainActivity extends AppCompatActivity {
         Data.Builder dataBuilder2 = new Data.Builder();
         dataBuilder1.putInt("num2", 5);
         OneTimeWorkRequest workRequest2 = new OneTimeWorkRequest
-                .Builder(Chaining2Worker.class)
+                .Builder(Chaining_1_2_Worker.class)
                 .setInputData(dataBuilder2.build())
+                .setInputMerger(OverwritingInputMerger.class)
+//                .setInputMerger(ArrayCreatingInputMerger.class)
                 .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_2)
                 .build();
 
         Data.Builder dataBuilder3 = new Data.Builder();
         dataBuilder1.putInt("num3", 10);
         OneTimeWorkRequest workRequest3 = new OneTimeWorkRequest
-                .Builder(Chaining3Worker.class)
+                .Builder(Chaining_1_3Worker.class)
+                .setInputMerger(OverwritingInputMerger.class)
+//                .setInputMerger(ArrayCreatingInputMerger.class)
                 .setInputData(dataBuilder3.build())
                 .addTag(UNIQUE_WORK_3_CHAINED_WORK_TAG_3)
                 .build();
 
-        mWorkIdOfSumData1 = workRequest1.getId();
-        // 假如任务链上运行多次
-//        WorkManager.getInstance(this).beginWith(workRequest1).then(workRequest2).then(workRequest3).enqueue();
-
-        List<OneTimeWorkRequest> workRequestList = Arrays.asList(workRequest1, workRequest2);
+        /*
+         Work入队时按次序入队，没有并列Wor时，.beginUniqueWork(UNIQUE_WORK_3_CHAINED_WORK, ExistingWorkPolicy.KEEP, workRequest1)
+         (1)只有第一个入对的setInputData有效果。
+         (2)后一个把前一个的输出作为输入，并忽略它本身的Input，e.g., Chaining_1_1_Worker -> Chaining_1_2_Worker
+         (3) 不需要设置setInputMerger。及时设置了，也不改变值传输结果。
+             E/Chaining_1_1_Worker: doWork: start:Data {num : 3, }
+            E/Chaining_1_2_Worker: doWork: start:Data {plant_name_1 : A, }
+            E/MainActivity: workRequest1:onChanged: Data {plant_name_1 : A, },state:SUCCEEDED
+            E/Chaining_1_3Worker: doWork: start:Data {plant_name_1 : M, }
+            E/MainActivity: workRequest2:onChanged: Data {plant_name_1 : M, },state:SUCCEEDED
+            E/MainActivity: workRequest3:onChanged: Data {plant_name_3 : X, },state:SUCCEEDED
+         */
         // 假如任务链只运行1次。
         WorkManager.getInstance(this)
-                // 并行执行 workRequestList 中的任务
-//                .beginUniqueWork(UNIQUE_WORK_3_CHAINED_WORK, ExistingWorkPolicy.KEEP, workRequestList)
                 .beginUniqueWork(UNIQUE_WORK_3_CHAINED_WORK, ExistingWorkPolicy.KEEP, workRequest1)
                 .then(workRequest2)
                 .then(workRequest3)
                 .enqueue();
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest1.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest1:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest2.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest2:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest3.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest3:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+
+    }
+
+    private void chainedWork2() {
+        Data.Builder dataBuilder1 = new Data.Builder();
+        dataBuilder1.putInt("num", 3);
+        OneTimeWorkRequest workRequest1 = new OneTimeWorkRequest
+                .Builder(Chaining_2_1_Worker.class)
+                .setInputData(dataBuilder1.build())
+                .build();
+
+        Data.Builder dataBuilder2 = new Data.Builder();
+        dataBuilder1.putInt("num2", 5);
+        OneTimeWorkRequest workRequest2 = new OneTimeWorkRequest
+                .Builder(Chaining_2_2_Worker.class)
+                .setInputData(dataBuilder2.build())
+//                .setInputMerger(OverwritingInputMerger.class)
+                .setInputMerger(ArrayCreatingInputMerger.class)
+                .build();
+
+        Data.Builder dataBuilder3 = new Data.Builder();
+        dataBuilder1.putInt("num3", 10);
+        OneTimeWorkRequest workRequest3 = new OneTimeWorkRequest
+                .Builder(Chaining_2_3_Worker.class)
+//                .setInputMerger(OverwritingInputMerger.class)
+                .setInputMerger(ArrayCreatingInputMerger.class)
+                .setInputData(dataBuilder3.build())
+                .build();
+        /*
+           Work入队有并列时，
+            (1)只有第一个入对的setInputData有效果。
+           （2）OverwritingInputMerger，并列的Works，含有相同Key的Work，传出的是后完成的value。
+
+            OverwritingInputMerger:
+            E/Chaining_2_1_Worker: doWork: start:Data {num : 3, }
+            E/Chaining_2_2_Worker: doWork: start:Data {}
+            E/Chaining_2_2_Worker: doWork: end
+            E/MainActivity: workRequest2:onChanged: Data {plant_name_1 : B, },state:SUCCEEDED
+            E/Chaining_2_1_Worker: doWork: end
+            E/Chaining_2_3_Worker: doWork: start:Data {plant_name_1 : B, }
+            E/MainActivity: workRequest1:onChanged: Data {plant_name_1 : A, },state:SUCCEEDED
+            E/Chaining_2_3_Worker: doWork: end
+            E/MainActivity: workRequest3:onChanged: Data {plant_name_1 : C, },state:SUCCEEDED
+
+            （3）ArrayCreatingInputMerger：并列的Works，含有相同Key的Work，传出的是按入队顺序的list。
+            E/Chaining_2_1_Worker: doWork: start:Data {num : 3, }
+            E/Chaining_2_2_Worker: doWork: start:Data {}
+            E/Chaining_2_2_Worker: doWork: end
+            E/MainActivity: workRequest2:onChanged: Data {plant_name_1 : B, },state:SUCCEEDED
+            E/Chaining_2_1_Worker: doWork: end
+            E/Chaining_2_3_Worker: doWork: start:Data {plant_name_1 : [A, B], }
+            E/MainActivity: workRequest1:onChanged: Data {plant_name_1 : A, },state:SUCCEEDED
+            E/Chaining_2_3_Worker: doWork: end
+            E/MainActivity: workRequest3:onChanged: Data {plant_name_1 : C, },state:SUCCEEDED
+         */
+        // 假如任务链只运行1次。
+        WorkManager.getInstance(this)
+                // 并行执行 workRequestList 中的任务
+                .beginUniqueWork(UNIQUE_WORK_4_CHAINED_WORK, ExistingWorkPolicy.KEEP, Arrays.asList(workRequest1, workRequest2))
+                .then(workRequest3)
+                .enqueue();
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest1.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest1:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest2.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest2:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(workRequest3.getId())
+                .observe(this, new Observer<WorkInfo>() {
+                    @Override
+                    public void onChanged(WorkInfo workInfo) {
+                        if (null != workInfo && workInfo.getState().isFinished()) {
+                            Log.e(TAG, "workRequest3:onChanged: " + workInfo.getOutputData() + ",state:" + workInfo.getState());
+                        }
+                    }
+                });
+
     }
 
     private void cancelWork() {
