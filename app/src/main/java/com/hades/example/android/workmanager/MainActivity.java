@@ -63,10 +63,13 @@ public class MainActivity extends AppCompatActivity {
 //        findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork());
         findViewById(R.id.chainingWork).setOnClickListener(view -> chainedWork2());
         findViewById(R.id.observeWork).setOnClickListener(view -> observeWork());
+        findViewById(R.id.testCoroutineWorker).setOnClickListener(view -> testCoroutineWorker());
+        findViewById(R.id.testRxWorker).setOnClickListener(view -> testRxWorker());
+        findViewById(R.id.longRunningWorkers).setOnClickListener(view -> longRunningWorkers());
     }
 
     private void scheduleOneTimeWork() {
-//        singleWork();
+        singleWork();
     }
 
     private void uniqueWork() {
@@ -169,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
         dataBuilder.putBoolean("k3", true);
 
         Constraints constraints = new Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
+//                .setRequiresBatteryNotLow(true)
 //                .setRequiredNetworkType(NetworkType.CONNECTED)
 //                .setRequiresDeviceIdle(false)
 //                .setRequiresStorageNotLow(false)
@@ -189,6 +192,7 @@ public class MainActivity extends AppCompatActivity {
                 .addTag(WORK_REQUEST_TAG_2)
                 .build();
         WorkManager.getInstance(this).enqueue(workRequest);
+        WorkManager.getInstance(this).cancelWorkById(workRequest.getId());
     }
 
     private void chainedWork() {
@@ -370,5 +374,23 @@ public class MainActivity extends AppCompatActivity {
         WorkManager.getInstance(this).cancelUniqueWork(UNIQUE_WORK_NAME_OF_SUM);
         // way 4 :
         WorkManager.getInstance(this).cancelAllWork();
+    }
+
+    private void testCoroutineWorker() {
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(SingleWorker4Kotlin.class)
+                .addTag("SingleWorker4Kotlin")
+                .build();
+        WorkManager.getInstance(this).enqueueUniqueWork("testCoroutineWorker", ExistingWorkPolicy.KEEP, request);
+    }
+
+    private void testRxWorker() {
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(SingleWorker4RxJava.class)
+                .addTag("SingleWorker4RxJava")
+                .build();
+        WorkManager.getInstance(this).enqueueUniqueWork("testRxWorker", ExistingWorkPolicy.KEEP, request);
+    }
+
+    private void longRunningWorkers() {
+        new LongRunningWorkersExample().test();
     }
 }

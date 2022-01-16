@@ -18,12 +18,15 @@ public class SingleWorker extends Worker {
 
     public SingleWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        // thread id:2,thread name:main
+        Log.d(TAG, "doWork:id:" + getId() + ",tags:" + getTags().toString() + ",hashCode:" + hashCode());
     }
 
     @NonNull
     @Override
     public Result doWork() {
         Log.d(TAG, "doWork:id:" + getId() + ",tags:" + getTags().toString() + ",hashCode:" + hashCode());
+        // TODO:TODO:default runs on Executor specified in Configuration
         // Worker的doWork用来执行后台任务，运行在子线程 - WorkerManager自带线程池中的线程。
         // WorkerManager自带线程池。每次执行任务时，优先使用线程池的thread，若没有，则创建并使用新thread，并放入线程池。
         // thread id:1990,thread name:pool-2-thread-1
@@ -48,35 +51,39 @@ public class SingleWorker extends Worker {
         Log.d(TAG, "doWork: key:k1,value:" + inputData.getString("k1"));
         MainActivity.ms = System.currentTimeMillis();
 
-        Data.Builder outputDataBuilder = new Data.Builder();
-        outputDataBuilder.putBoolean("count_task_is_success", true);
+//        Data.Builder outputDataBuilder = new Data.Builder();
+//        outputDataBuilder.putBoolean("count_task_is_success", true);
 //        return Result.failure();
 //        return Result.failure(outputDataBuilder.build());
 //        return Result.success();
 //        return Result.success(outputDataBuilder.build());
-        return Result.retry();
+//        return Result.retry();
 
-//        try {
-//            // Do the heavy work
-//            for (int i = 0; i < 3; i++) {
-//                Log.d(TAG, "doWork: i=" + i);
-//                Thread.sleep(1000);
-//            }
-//            Log.d(TAG, "doWork:success ");
-//
-//            // Result 有3种。
-//            // return Result.success();
-//
-//            Data.Builder outputDataBuilder = new Data.Builder();
-//            outputDataBuilder.putBoolean("count_task_is_success", true);
-//            return Result.success(outputDataBuilder.build());
-////        return Result.retry();
-//        } catch (Exception exception) {
-//            Log.d(TAG, "doWork:fail ");
-//
-////            return Result.failure();
-//
-//
-//        }
+        try {
+            // Do the heavy work
+            for (int i = 0; i < 3; i++) {
+                Log.d(TAG, "doWork: i=" + i);
+                Thread.sleep(1000);
+            }
+            Log.d(TAG, "doWork:success ");
+
+            // Result 有3种。
+            // return Result.success();
+
+            Data.Builder outputDataBuilder = new Data.Builder();
+            outputDataBuilder.putBoolean("count_task_is_success", true);
+            return Result.success(outputDataBuilder.build());
+//        return Result.retry();
+        } catch (Exception exception) {
+            Log.d(TAG, "doWork:fail ");
+            return Result.failure();
+        }
+    }
+
+    @Override
+    public void onStopped() {
+        super.onStopped();
+        // clear up resources
+        Log.d(TAG, "onStopped:id:" + getId() + ",tags:" + getTags().toString() + ",hashCode:" + hashCode());
     }
 }

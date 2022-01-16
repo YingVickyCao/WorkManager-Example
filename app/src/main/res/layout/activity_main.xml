@@ -62,4 +62,25 @@
         android:layout_height="wrap_content"
         android:text="Observe Work"
         android:textAllCaps="false" />
+
+    <Button
+        android:id="@+id/testCoroutineWorker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CoroutineWorker"
+        android:textAllCaps="false" />
+
+    <Button
+        android:id="@+id/testRxWorker"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="RxWorker"
+        android:textAllCaps="false" />
+
+    <Button
+        android:id="@+id/longRunningWorkers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Support for long-running workers"
+        android:textAllCaps="false" />
 </LinearLayout>

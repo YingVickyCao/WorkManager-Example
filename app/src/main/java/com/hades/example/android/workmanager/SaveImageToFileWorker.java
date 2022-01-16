@@ -32,7 +32,7 @@ public class SaveImageToFileWorker extends Worker {
 //                e.printStackTrace();
 //            }
 //        }
-//        return Result.success();
-        return Result.retry();
+        return Result.success();
+//        return Result.retry();
     }
 }
